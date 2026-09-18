@@ -9,10 +9,10 @@ description: Eigenstaendiges Clan-Plugin mit Bank, Homes und Rollen.
 commands:
   clan:
     description: Clan-Hauptbefehl
-    usage: /clan <create|delete|bank|promote|demote|kick|home|info|transfer>
+    usage: /clan <create|delete|bank|promote|demote|kick|home|info|transfer|chat>
   setclanhome:
-    description: Setzt das aktuelle Clan-Home
-    usage: /setclanhome <name>
+    description: Setzt das Clan-Home an der aktuellen Position (ein Home pro Clan)
+    usage: /setclanhome
 
 permissions:
   customclans.use:

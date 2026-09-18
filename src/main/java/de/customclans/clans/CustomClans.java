@@ -6,6 +6,7 @@ public class CustomClans extends JavaPlugin {
 
     private ClanManager clanManager;
     private EconomyHook economyHook;
+    private ClanChatManager clanChatManager;
 
     @Override
     public void onEnable() {
@@ -25,7 +26,11 @@ public class CustomClans extends JavaPlugin {
         clanManager = new ClanManager(getDataFolder(), getLogger());
         clanManager.loadAll();
 
-        ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook);
+        clanChatManager = new ClanChatManager();
+        getServer().getPluginManager().registerEvents(
+                new ClanChatListener(clanManager, clanChatManager), this);
+
+        ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook, clanChatManager);
         getCommand("clan").setExecutor(clanCommand);
         getCommand("clan").setTabCompleter(clanCommand);
 

@@ -15,8 +15,8 @@ public class Clan {
     private UUID owner;
     /** UUID -> Rank (LEADER/OFFICER/MEMBER). The owner is always LEADER. */
     private final Map<UUID, Rank> members = new LinkedHashMap<>();
-    /** Named homes, e.g. "home" as the default. */
-    private final Map<String, Location> homes = new LinkedHashMap<>();
+    /** Exactly one home per clan, independent of every other clan's home. */
+    private Location home;
     private double bankBalance;
 
     public Clan(String name, UUID owner) {
@@ -62,16 +62,16 @@ public class Clan {
         members.remove(uuid);
     }
 
-    public Map<String, Location> getHomes() {
-        return homes;
+    public Location getHome() {
+        return home;
     }
 
-    public void setHome(String name, Location location) {
-        homes.put(name.toLowerCase(), location);
+    public void setHome(Location home) {
+        this.home = home;
     }
 
-    public Location getHome(String name) {
-        return homes.get(name.toLowerCase());
+    public boolean hasHome() {
+        return home != null;
     }
 
     public double getBankBalance() {

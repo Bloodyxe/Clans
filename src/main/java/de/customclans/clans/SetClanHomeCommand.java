@@ -32,10 +32,9 @@ public class SetClanHomeCommand implements CommandExecutor {
             return true;
         }
 
-        String homeName = args.length >= 1 ? args[0] : "home";
-        clan.setHome(homeName, player.getLocation());
+        clan.setHome(player.getLocation());
         clanManager.save(clan);
-        msg(player, "&aClan-Home '" + homeName + "' wurde an deiner Position gesetzt.");
+        msg(player, "&aDas Clan-Home wurde an deiner Position gesetzt.");
         return true;
     }
 

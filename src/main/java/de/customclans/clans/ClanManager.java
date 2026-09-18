@@ -86,20 +86,16 @@ public class ClanManager {
 
         clan.setBankBalance(yaml.getDouble("bank", 0.0));
 
-        if (yaml.isConfigurationSection("homes")) {
-            for (String homeName : yaml.getConfigurationSection("homes").getKeys(false)) {
-                String path = "homes." + homeName + ".";
-                String worldName = yaml.getString(path + "world");
-                World world = worldName != null ? Bukkit.getWorld(worldName) : null;
-                if (world == null) {
-                    continue;
-                }
-                double x = yaml.getDouble(path + "x");
-                double y = yaml.getDouble(path + "y");
-                double z = yaml.getDouble(path + "z");
-                float yaw = (float) yaml.getDouble(path + "yaw");
-                float pitch = (float) yaml.getDouble(path + "pitch");
-                clan.setHome(homeName, new Location(world, x, y, z, yaw, pitch));
+        if (yaml.isConfigurationSection("home")) {
+            String worldName = yaml.getString("home.world");
+            World world = worldName != null ? Bukkit.getWorld(worldName) : null;
+            if (world != null) {
+                double x = yaml.getDouble("home.x");
+                double y = yaml.getDouble("home.y");
+                double z = yaml.getDouble("home.z");
+                float yaw = (float) yaml.getDouble("home.yaw");
+                float pitch = (float) yaml.getDouble("home.pitch");
+                clan.setHome(new Location(world, x, y, z, yaw, pitch));
             }
         }
 
@@ -116,15 +112,14 @@ public class ClanManager {
             yaml.set("members." + entry.getKey() + "", entry.getValue().name());
         }
 
-        for (Map.Entry<String, Location> entry : clan.getHomes().entrySet()) {
-            Location loc = entry.getValue();
-            String path = "homes." + entry.getKey() + ".";
-            yaml.set(path + "world", loc.getWorld().getName());
-            yaml.set(path + "x", loc.getX());
-            yaml.set(path + "y", loc.getY());
-            yaml.set(path + "z", loc.getZ());
-            yaml.set(path + "yaw", loc.getYaw());
-            yaml.set(path + "pitch", loc.getPitch());
+        if (clan.hasHome()) {
+            Location loc = clan.getHome();
+            yaml.set("home.world", loc.getWorld().getName());
+            yaml.set("home.x", loc.getX());
+            yaml.set("home.y", loc.getY());
+            yaml.set("home.z", loc.getZ());
+            yaml.set("home.yaw", loc.getYaw());
+            yaml.set("home.pitch", loc.getPitch());
         }
 
         File file = fileFor(clan.getName());

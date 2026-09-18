@@ -20,15 +20,17 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     private final CustomClans plugin;
     private final ClanManager clanManager;
     private final EconomyHook economyHook;
+    private final ClanChatManager clanChatManager;
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer"
+            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat"
     );
 
-    public ClanCommand(CustomClans plugin, ClanManager clanManager, EconomyHook economyHook) {
+    public ClanCommand(CustomClans plugin, ClanManager clanManager, EconomyHook economyHook, ClanChatManager clanChatManager) {
         this.plugin = plugin;
         this.clanManager = clanManager;
         this.economyHook = economyHook;
+        this.clanChatManager = clanChatManager;
     }
 
     @Override
@@ -58,6 +60,8 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                 return handleInfo(sender, args);
             case "transfer":
                 return handleTransfer(sender, args);
+            case "chat":
+                return handleChat(sender);
             default:
                 sendUsage(sender);
                 return true;
@@ -316,17 +320,11 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             msg(player, "&cDu bist in keinem Clan.");
             return true;
         }
-        String homeName = args.length >= 2 ? args[1] : "home";
-        org.bukkit.Location location = clan.getHome(homeName);
-        if (location == null) {
-            if (homeName.equals("home")) {
-                msg(player, "&cDein Clan hat noch kein Home. Ein Offizier/Anführer kann es mit /setclanhome setzen.");
-            } else {
-                msg(player, "&cEs gibt kein Clan-Home mit dem Namen '" + homeName + "'.");
-            }
+        if (!clan.hasHome()) {
+            msg(player, "&cDein Clan hat noch kein Home. Ein Offizier/Anführer kann es mit /setclanhome setzen.");
             return true;
         }
-        player.teleport(location);
+        player.teleport(clan.getHome());
         msg(player, "&aDu wurdest zum Clan-Home teleportiert.");
         return true;
     }
@@ -409,6 +407,28 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    // ---------------------------------------------------------------- chat
+
+    private boolean handleChat(CommandSender sender) {
+        Player player = requirePlayer(sender);
+        if (player == null) return true;
+
+        Clan clan = clanManager.getClanByPlayer(player.getUniqueId());
+        if (clan == null) {
+            msg(player, "&cDu bist in keinem Clan.");
+            return true;
+        }
+
+        boolean nowEnabled = clanChatManager.toggle(player.getUniqueId());
+        if (nowEnabled) {
+            msg(player, "&a[Clan-Chat] &7Aktiviert. Nachrichten gehen jetzt nur noch an deinen Clan.");
+            msg(player, "&7Nutze &f/clan chat &7erneut zum Ausschalten.");
+        } else {
+            msg(player, "&7[Clan-Chat] &cDeaktiviert. Du schreibst jetzt wieder im normalen Chat.");
+        }
+        return true;
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private Player requirePlayer(CommandSender sender) {
@@ -442,9 +462,10 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(color("&f/clan promote <spieler> &7- zum Offizier befördern"));
         sender.sendMessage(color("&f/clan demote <spieler> &7- degradieren"));
         sender.sendMessage(color("&f/clan kick <spieler> &7- aus dem Clan werfen"));
-        sender.sendMessage(color("&f/clan home [name] &7- zum Clan-Home teleportieren"));
+        sender.sendMessage(color("&f/clan home &7- zum Clan-Home teleportieren"));
         sender.sendMessage(color("&f/clan info [name] &7- Clan-Infos anzeigen"));
         sender.sendMessage(color("&f/clan transfer <spieler> &7- Führung übertragen"));
+        sender.sendMessage(color("&f/clan chat &7- Clan-Chat an-/ausschalten"));
         sender.sendMessage(color("&f/setclanhome [name] &7- Clan-Home setzen"));
     }
 
