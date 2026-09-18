@@ -1,0 +1,185 @@
+package de.customclans.clans;
+
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.configuration.file.YamlConfiguration;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ * Loads/saves every clan as its own YAML file under plugins/CustomClans/clans/<name>.yml
+ * and keeps an in-memory index so lookups don't hit disk on every command.
+ */
+public class ClanManager {
+
+    private final File clansFolder;
+    private final Logger logger;
+
+    /** clan name (lowercase) -> Clan */
+    private final Map<String, Clan> clansByName = new HashMap<>();
+    /** player UUID -> clan name (lowercase), for quick "which clan is this player in" lookups */
+    private final Map<UUID, String> playerIndex = new HashMap<>();
+
+    public ClanManager(File dataFolder, Logger logger) {
+        this.clansFolder = new File(dataFolder, "clans");
+        this.logger = logger;
+        if (!clansFolder.exists()) {
+            clansFolder.mkdirs();
+        }
+    }
+
+    public void loadAll() {
+        clansByName.clear();
+        playerIndex.clear();
+        File[] files = clansFolder.listFiles((dir, name) -> name.toLowerCase().endsWith(".yml"));
+        if (files == null) {
+            return;
+        }
+        for (File file : files) {
+            try {
+                Clan clan = loadFromFile(file);
+                if (clan != null) {
+                    clansByName.put(clan.getName().toLowerCase(), clan);
+                    for (UUID member : clan.getMembers().keySet()) {
+                        playerIndex.put(member, clan.getName().toLowerCase());
+                    }
+                }
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Konnte Clan-Datei nicht laden: " + file.getName(), e);
+            }
+        }
+        logger.info("[CustomClans] " + clansByName.size() + " Clan(s) geladen.");
+    }
+
+    private Clan loadFromFile(File file) {
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        String name = yaml.getString("name");
+        String ownerStr = yaml.getString("owner");
+        if (name == null || ownerStr == null) {
+            return null;
+        }
+        UUID owner = UUID.fromString(ownerStr);
+        Clan clan = new Clan(name, owner);
+        clan.getMembers().clear();
+
+        if (yaml.isConfigurationSection("members")) {
+            for (String uuidStr : yaml.getConfigurationSection("members").getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(uuidStr);
+                    Rank rank = Rank.valueOf(yaml.getString("members." + uuidStr, "MEMBER"));
+                    clan.addMember(uuid, rank);
+                } catch (IllegalArgumentException ignored) {
+                    // malformed entry, skip
+                }
+            }
+        }
+        if (!clan.isMember(owner)) {
+            clan.addMember(owner, Rank.LEADER);
+        }
+
+        clan.setBankBalance(yaml.getDouble("bank", 0.0));
+
+        if (yaml.isConfigurationSection("homes")) {
+            for (String homeName : yaml.getConfigurationSection("homes").getKeys(false)) {
+                String path = "homes." + homeName + ".";
+                String worldName = yaml.getString(path + "world");
+                World world = worldName != null ? Bukkit.getWorld(worldName) : null;
+                if (world == null) {
+                    continue;
+                }
+                double x = yaml.getDouble(path + "x");
+                double y = yaml.getDouble(path + "y");
+                double z = yaml.getDouble(path + "z");
+                float yaw = (float) yaml.getDouble(path + "yaw");
+                float pitch = (float) yaml.getDouble(path + "pitch");
+                clan.setHome(homeName, new Location(world, x, y, z, yaw, pitch));
+            }
+        }
+
+        return clan;
+    }
+
+    public void save(Clan clan) {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("name", clan.getName());
+        yaml.set("owner", clan.getOwner().toString());
+        yaml.set("bank", clan.getBankBalance());
+
+        for (Map.Entry<UUID, Rank> entry : clan.getMembers().entrySet()) {
+            yaml.set("members." + entry.getKey() + "", entry.getValue().name());
+        }
+
+        for (Map.Entry<String, Location> entry : clan.getHomes().entrySet()) {
+            Location loc = entry.getValue();
+            String path = "homes." + entry.getKey() + ".";
+            yaml.set(path + "world", loc.getWorld().getName());
+            yaml.set(path + "x", loc.getX());
+            yaml.set(path + "y", loc.getY());
+            yaml.set(path + "z", loc.getZ());
+            yaml.set(path + "yaw", loc.getYaw());
+            yaml.set(path + "pitch", loc.getPitch());
+        }
+
+        File file = fileFor(clan.getName());
+        try {
+            yaml.save(file);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Konnte Clan-Datei nicht speichern: " + file.getName(), e);
+        }
+    }
+
+    public void delete(Clan clan) {
+        clansByName.remove(clan.getName().toLowerCase());
+        for (UUID member : clan.getMembers().keySet()) {
+            playerIndex.remove(member);
+        }
+        File file = fileFor(clan.getName());
+        if (file.exists()) {
+            file.delete();
+        }
+    }
+
+    public void createClan(String name, UUID owner) {
+        Clan clan = new Clan(name, owner);
+        clansByName.put(name.toLowerCase(), clan);
+        playerIndex.put(owner, name.toLowerCase());
+        save(clan);
+    }
+
+    public void registerMembership(Clan clan, UUID uuid) {
+        playerIndex.put(uuid, clan.getName().toLowerCase());
+    }
+
+    public void unregisterMembership(UUID uuid) {
+        playerIndex.remove(uuid);
+    }
+
+    public Clan getClanByName(String name) {
+        return clansByName.get(name.toLowerCase());
+    }
+
+    public Clan getClanByPlayer(UUID uuid) {
+        String clanName = playerIndex.get(uuid);
+        return clanName != null ? clansByName.get(clanName) : null;
+    }
+
+    public boolean clanExists(String name) {
+        return clansByName.containsKey(name.toLowerCase());
+    }
+
+    public Map<String, Clan> getAllClans() {
+        return clansByName;
+    }
+
+    private File fileFor(String clanName) {
+        String safe = clanName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        return new File(clansFolder, safe.toLowerCase() + ".yml");
+    }
+}
