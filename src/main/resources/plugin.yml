@@ -4,12 +4,13 @@ main: de.customclans.clans.CustomClans
 api-version: '1.20'
 author: brigantdan246
 depend: [Vault]
+softdepend: [PlaceholderAPI]
 description: Standalone clan plugin with bank, home and roles.
 
 commands:
   clan:
     description: Main clan command
-    usage: /clan <create|delete|bank|promote|demote|kick|home|info|transfer|chat|invite|permission>
+    usage: /clan <create|delete|bank|promote|demote|kick|home|info|transfer|chat|invite|permission|leave>
   setclanhome:
     description: Sets the clan home at your current position (one home per clan)
     usage: /setclanhome

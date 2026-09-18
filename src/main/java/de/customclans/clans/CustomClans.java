@@ -1,5 +1,6 @@
 package de.customclans.clans;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class CustomClans extends JavaPlugin {
@@ -8,6 +9,7 @@ public class CustomClans extends JavaPlugin {
     private EconomyHook economyHook;
     private ClanChatManager clanChatManager;
     private InviteManager inviteManager;
+    private BankActionManager bankActionManager;
 
     @Override
     public void onEnable() {
@@ -29,10 +31,14 @@ public class CustomClans extends JavaPlugin {
 
         clanChatManager = new ClanChatManager();
         inviteManager = new InviteManager();
+        bankActionManager = new BankActionManager();
+
         getServer().getPluginManager().registerEvents(
-                new ClanChatListener(clanManager, clanChatManager), this);
+                new ClanChatListener(clanManager, clanChatManager, economyHook, bankActionManager), this);
         getServer().getPluginManager().registerEvents(
-                new ClanGuiListener(clanManager), this);
+                new ClanGuiListener(clanManager, economyHook, bankActionManager), this);
+        getServer().getPluginManager().registerEvents(
+                new ClanPvpListener(clanManager), this);
 
         ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook, clanChatManager, inviteManager);
         getCommand("clan").setExecutor(clanCommand);
@@ -40,6 +46,14 @@ public class CustomClans extends JavaPlugin {
 
         SetClanHomeCommand setHomeCommand = new SetClanHomeCommand(clanManager);
         getCommand("setclanhome").setExecutor(setHomeCommand);
+
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new CustomClansExpansion(this, clanManager).register();
+            getLogger().info("PlaceholderAPI found - %customclans_clan% and %customclans_tag% "
+                    + "placeholders are now available (e.g. for the TAB plugin).");
+        } else {
+            getLogger().info("PlaceholderAPI not found - clan placeholders for TAB etc. are disabled.");
+        }
 
         getLogger().info("CustomClans has been enabled.");
     }

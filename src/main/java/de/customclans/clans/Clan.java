@@ -25,12 +25,17 @@ public class Clan {
     /** Non-leader members explicitly granted /clan home access. The leader always has access. */
     private final Set<UUID> homeAllowed = new HashSet<>();
     private double bankBalance;
+    /** Epoch millis when the clan was founded, shown in the main GUI's clock item. */
+    private long createdAt;
+    /** Whether members of this clan can damage each other. Leader-only toggle. */
+    private boolean pvpEnabled = false;
 
     public Clan(String name, UUID owner) {
         this.name = name;
         this.owner = owner;
         this.members.put(owner, Rank.LEADER);
         this.bankBalance = 0.0;
+        this.createdAt = System.currentTimeMillis();
     }
 
     public String getName() {
@@ -124,5 +129,21 @@ public class Clan {
         }
         bankBalance -= amount;
         return true;
+    }
+
+    public long getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(long createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public boolean isPvpEnabled() {
+        return pvpEnabled;
+    }
+
+    public void setPvpEnabled(boolean pvpEnabled) {
+        this.pvpEnabled = pvpEnabled;
     }
 }

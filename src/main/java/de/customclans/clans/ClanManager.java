@@ -1,6 +1,7 @@
 package de.customclans.clans;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -24,10 +25,19 @@ public class ClanManager {
     private final File clansFolder;
     private final Logger logger;
 
-    /** clan name (lowercase) -> Clan */
+    /** normalized clan name (color codes stripped, lowercase) -> Clan */
     private final Map<String, Clan> clansByName = new HashMap<>();
-    /** player UUID -> clan name (lowercase), for quick "which clan is this player in" lookups */
+    /** player UUID -> normalized clan name, for quick "which clan is this player in" lookups */
     private final Map<UUID, String> playerIndex = new HashMap<>();
+
+    /**
+     * Normalizes a clan name for uniqueness/lookup purposes: strips color codes (so &4WWL and
+     * WWL are treated as the same name) and lowercases it.
+     */
+    public static String normalize(String name) {
+        String translated = ChatColor.translateAlternateColorCodes('&', name);
+        return ChatColor.stripColor(translated).toLowerCase();
+    }
 
     public ClanManager(File dataFolder, Logger logger) {
         this.clansFolder = new File(dataFolder, "clans");
@@ -48,9 +58,9 @@ public class ClanManager {
             try {
                 Clan clan = loadFromFile(file);
                 if (clan != null) {
-                    clansByName.put(clan.getName().toLowerCase(), clan);
+                    clansByName.put(normalize(clan.getName()), clan);
                     for (UUID member : clan.getMembers().keySet()) {
-                        playerIndex.put(member, clan.getName().toLowerCase());
+                        playerIndex.put(member, normalize(clan.getName()));
                     }
                 }
             } catch (Exception e) {
@@ -87,6 +97,11 @@ public class ClanManager {
         }
 
         clan.setBankBalance(yaml.getDouble("bank", 0.0));
+        clan.setPvpEnabled(yaml.getBoolean("pvp", false));
+        long createdAt = yaml.getLong("created_at", 0L);
+        if (createdAt > 0L) {
+            clan.setCreatedAt(createdAt);
+        }
 
         for (String uuidStr : yaml.getStringList("home_permissions")) {
             try {
@@ -117,6 +132,8 @@ public class ClanManager {
         yaml.set("name", clan.getName());
         yaml.set("owner", clan.getOwner().toString());
         yaml.set("bank", clan.getBankBalance());
+        yaml.set("pvp", clan.isPvpEnabled());
+        yaml.set("created_at", clan.getCreatedAt());
 
         for (Map.Entry<UUID, Rank> entry : clan.getMembers().entrySet()) {
             yaml.set("members." + entry.getKey() + "", entry.getValue().name());
@@ -147,7 +164,7 @@ public class ClanManager {
     }
 
     public void delete(Clan clan) {
-        clansByName.remove(clan.getName().toLowerCase());
+        clansByName.remove(normalize(clan.getName()));
         for (UUID member : clan.getMembers().keySet()) {
             playerIndex.remove(member);
         }
@@ -159,13 +176,13 @@ public class ClanManager {
 
     public void createClan(String name, UUID owner) {
         Clan clan = new Clan(name, owner);
-        clansByName.put(name.toLowerCase(), clan);
-        playerIndex.put(owner, name.toLowerCase());
+        clansByName.put(normalize(name), clan);
+        playerIndex.put(owner, normalize(name));
         save(clan);
     }
 
     public void registerMembership(Clan clan, UUID uuid) {
-        playerIndex.put(uuid, clan.getName().toLowerCase());
+        playerIndex.put(uuid, normalize(clan.getName()));
     }
 
     public void unregisterMembership(UUID uuid) {
@@ -173,7 +190,7 @@ public class ClanManager {
     }
 
     public Clan getClanByName(String name) {
-        return clansByName.get(name.toLowerCase());
+        return clansByName.get(normalize(name));
     }
 
     public Clan getClanByPlayer(UUID uuid) {
@@ -181,8 +198,9 @@ public class ClanManager {
         return clanName != null ? clansByName.get(clanName) : null;
     }
 
+    /** Color-code independent: "WWL" and "&4WWL" are considered the same name. */
     public boolean clanExists(String name) {
-        return clansByName.containsKey(name.toLowerCase());
+        return clansByName.containsKey(normalize(name));
     }
 
     public Map<String, Clan> getAllClans() {
@@ -190,7 +208,8 @@ public class ClanManager {
     }
 
     private File fileFor(String clanName) {
-        String safe = clanName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        String stripped = ChatColor.stripColor(ChatColor.translateAlternateColorCodes('&', clanName));
+        String safe = stripped.replaceAll("[^a-zA-Z0-9_\\-]", "_");
         return new File(clansFolder, safe.toLowerCase() + ".yml");
     }
 }

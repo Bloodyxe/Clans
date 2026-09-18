@@ -22,7 +22,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     private final InviteManager inviteManager;
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite", "permission"
+            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite", "permission", "leave"
     );
 
     public ClanCommand(CustomClans plugin, ClanManager clanManager, EconomyHook economyHook,
@@ -67,6 +67,8 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                 return handleInvite(sender, args);
             case "permission":
                 return handlePermission(sender, args);
+            case "leave":
+                return handleLeave(sender);
             default:
                 sendUsage(sender);
                 return true;
@@ -87,13 +89,14 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             msg(player, "&cYou are already in a clan.");
             return true;
         }
-        String name = args[1];
-        if (name.length() < 3 || name.length() > 16) {
+        String name = ChatColor.translateAlternateColorCodes('&', args[1]);
+        String visible = ChatColor.stripColor(name);
+        if (visible.length() < 3 || visible.length() > 16) {
             msg(player, "&cThe clan name must be between 3 and 16 characters long.");
             return true;
         }
         if (clanManager.clanExists(name)) {
-            msg(player, "&cA clan with that name already exists.");
+            msg(player, "&cA clan with that name already exists (color codes don't count as a different name).");
             return true;
         }
         clanManager.createClan(name, player.getUniqueId());
@@ -384,7 +387,36 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             msg(player, "&cYou are not in a clan. Use /clan info <name> to look up another clan.");
             return true;
         }
-        player.openInventory(ClanInfoGui.build(clan));
+        player.openInventory(ClanMainGui.build(clan, economyHook));
+        return true;
+    }
+
+    // ---------------------------------------------------------------- leave
+
+    private boolean handleLeave(CommandSender sender) {
+        Player player = requirePlayer(sender);
+        if (player == null) return true;
+
+        Clan clan = clanManager.getClanByPlayer(player.getUniqueId());
+        if (clan == null) {
+            msg(player, "&cYou are not in a clan.");
+            return true;
+        }
+        if (clan.getRank(player.getUniqueId()) == Rank.LEADER) {
+            msg(player, "&cAs the leader you can't leave the clan. Use /clan transfer <player> "
+                    + "to hand over leadership first, or /clan delete to disband the clan.");
+            return true;
+        }
+        clan.removeMember(player.getUniqueId());
+        clanManager.unregisterMembership(player.getUniqueId());
+        clanManager.save(clan);
+        msg(player, "&7You left clan " + clan.getName() + ".");
+        for (UUID memberId : clan.getMembers().keySet()) {
+            Player online = Bukkit.getPlayer(memberId);
+            if (online != null) {
+                msg(online, "&7" + player.getName() + " left the clan.");
+            }
+        }
         return true;
     }
 
@@ -627,6 +659,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(color("&f/clan chat &7- Toggle clan chat"));
         sender.sendMessage(color("&f/clan invite <player> &7- Invite a player"));
         sender.sendMessage(color("&f/clan invite accept|decline &7- Respond to an invite"));
+        sender.sendMessage(color("&f/clan leave &7- Leave your clan (not for the leader)"));
         sender.sendMessage(color("&f/setclanhome &7- Set the clan home at your position"));
     }
 

@@ -9,6 +9,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +35,16 @@ public final class ClanInfoGui {
                 color("&8Clan: " + clan.getName() + " &7(" + clan.getMembers().size() + "/" + Clan.MAX_MEMBERS + ")"));
         holder.setInventory(inventory);
 
+        List<Map.Entry<UUID, Rank>> sortedMembers = new ArrayList<>(clan.getMembers().entrySet());
+        // Leader first, then Officers, then Members.
+        sortedMembers.sort(Comparator.comparingInt(entry -> switch (entry.getValue()) {
+            case LEADER -> 0;
+            case OFFICER -> 1;
+            case MEMBER -> 2;
+        }));
+
         int slot = 0;
-        for (Map.Entry<UUID, Rank> entry : clan.getMembers().entrySet()) {
+        for (Map.Entry<UUID, Rank> entry : sortedMembers) {
             UUID memberId = entry.getKey();
             Rank rank = entry.getValue();
             OfflinePlayer offline = Bukkit.getOfflinePlayer(memberId);
