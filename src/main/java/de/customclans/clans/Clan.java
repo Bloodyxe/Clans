@@ -2,8 +2,10 @@ package de.customclans.clans;
 
 import org.bukkit.Location;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -11,12 +13,17 @@ import java.util.UUID;
  */
 public class Clan {
 
+    /** Maximum number of members (including the leader) a single clan can have. */
+    public static final int MAX_MEMBERS = 15;
+
     private String name;
     private UUID owner;
     /** UUID -> Rank (LEADER/OFFICER/MEMBER). The owner is always LEADER. */
     private final Map<UUID, Rank> members = new LinkedHashMap<>();
     /** Exactly one home per clan, independent of every other clan's home. */
     private Location home;
+    /** Non-leader members explicitly granted /clan home access. The leader always has access. */
+    private final Set<UUID> homeAllowed = new HashSet<>();
     private double bankBalance;
 
     public Clan(String name, UUID owner) {
@@ -54,12 +61,17 @@ public class Clan {
         return members.containsKey(uuid);
     }
 
+    public boolean isFull() {
+        return members.size() >= MAX_MEMBERS;
+    }
+
     public void addMember(UUID uuid, Rank rank) {
         members.put(uuid, rank);
     }
 
     public void removeMember(UUID uuid) {
         members.remove(uuid);
+        homeAllowed.remove(uuid);
     }
 
     public Location getHome() {
@@ -72,6 +84,25 @@ public class Clan {
 
     public boolean hasHome() {
         return home != null;
+    }
+
+    /** The leader always has home access; other members need to be explicitly granted it. */
+    public boolean hasHomePermission(UUID uuid) {
+        return getRank(uuid) == Rank.LEADER || homeAllowed.contains(uuid);
+    }
+
+    public Set<UUID> getHomeAllowed() {
+        return homeAllowed;
+    }
+
+    /** @return true if the member now HAS home access, false if it was just revoked */
+    public boolean toggleHomePermission(UUID uuid) {
+        if (homeAllowed.contains(uuid)) {
+            homeAllowed.remove(uuid);
+            return false;
+        }
+        homeAllowed.add(uuid);
+        return true;
     }
 
     public double getBankBalance() {

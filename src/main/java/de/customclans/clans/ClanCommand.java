@@ -12,7 +12,6 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 public class ClanCommand implements CommandExecutor, TabCompleter {
 
@@ -23,7 +22,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     private final InviteManager inviteManager;
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite"
+            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite", "permission"
     );
 
     public ClanCommand(CustomClans plugin, ClanManager clanManager, EconomyHook economyHook,
@@ -66,6 +65,8 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                 return handleChat(sender);
             case "invite":
                 return handleInvite(sender, args);
+            case "permission":
+                return handlePermission(sender, args);
             default:
                 sendUsage(sender);
                 return true;
@@ -346,7 +347,11 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         }
 
         if (!clan.hasHome()) {
-            msg(player, "&cYour clan doesn't have a home yet. A leader/officer can set one with /setclanhome.");
+            msg(player, "&cYour clan doesn't have a home yet. The leader can set one with /setclanhome.");
+            return true;
+        }
+        if (!clan.hasHomePermission(player.getUniqueId())) {
+            msg(player, "&cYou don't have permission to use the clan home. Ask your leader for access via /clan permission home.");
             return true;
         }
         player.teleport(clan.getHome());
@@ -357,41 +362,29 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     // ---------------------------------------------------------------- info
 
     private boolean handleInfo(CommandSender sender, String[] args) {
-        Clan clan;
+        // Looking up ANOTHER clan by name: only the owner and member count, nothing else.
         if (args.length >= 2) {
-            clan = clanManager.getClanByName(args[1]);
+            Clan clan = clanManager.getClanByName(args[1]);
             if (clan == null) {
                 sender.sendMessage(color("&cThere is no clan named '" + args[1] + "'."));
                 return true;
             }
-        } else {
-            Player player = requirePlayer(sender);
-            if (player == null) return true;
-            clan = clanManager.getClanByPlayer(player.getUniqueId());
-            if (clan == null) {
-                msg(player, "&cYou are not in a clan. Use /clan info <name> to look up another clan.");
-                return true;
-            }
+            OfflinePlayer owner = Bukkit.getOfflinePlayer(clan.getOwner());
+            sender.sendMessage(color("&6=== Clan: " + clan.getName() + " ==="));
+            sender.sendMessage(color("&7Leader: &f" + owner.getName()));
+            sender.sendMessage(color("&7Members: &f" + clan.getMembers().size() + "/" + Clan.MAX_MEMBERS));
+            return true;
         }
 
-        OfflinePlayer owner = Bukkit.getOfflinePlayer(clan.getOwner());
-        sender.sendMessage(color("&6=== Clan: " + clan.getName() + " ==="));
-        sender.sendMessage(color("&7Leader: &f" + owner.getName()));
-        sender.sendMessage(color("&7Members: &f" + clan.getMembers().size()));
-        sender.sendMessage(color("&7Bank: &f" + economyHook.format(clan.getBankBalance())));
-
-        String memberList = clan.getMembers().entrySet().stream()
-                .map(e -> {
-                    OfflinePlayer p = Bukkit.getOfflinePlayer(e.getKey());
-                    String rankTag = switch (e.getValue()) {
-                        case LEADER -> "&6[Leader]";
-                        case OFFICER -> "&e[Officer]";
-                        case MEMBER -> "&7[Member]";
-                    };
-                    return rankTag + " &f" + p.getName();
-                })
-                .collect(Collectors.joining("&7, "));
-        sender.sendMessage(color("&7" + memberList));
+        // Your own clan: opens the detailed member GUI (status, rank, home access).
+        Player player = requirePlayer(sender);
+        if (player == null) return true;
+        Clan clan = clanManager.getClanByPlayer(player.getUniqueId());
+        if (clan == null) {
+            msg(player, "&cYou are not in a clan. Use /clan info <name> to look up another clan.");
+            return true;
+        }
+        player.openInventory(ClanInfoGui.build(clan));
         return true;
     }
 
@@ -481,6 +474,10 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             msg(player, "&cUsage: /clan invite <player>");
             return true;
         }
+        if (clan.isFull()) {
+            msg(player, "&cYour clan is full (" + Clan.MAX_MEMBERS + "/" + Clan.MAX_MEMBERS + ").");
+            return true;
+        }
 
         Player target = Bukkit.getPlayerExact(args[1]);
         if (target == null) {
@@ -519,6 +516,10 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             msg(player, "&cThat clan no longer exists.");
             return true;
         }
+        if (clan.isFull()) {
+            msg(player, "&cThat clan is now full (" + Clan.MAX_MEMBERS + "/" + Clan.MAX_MEMBERS + ").");
+            return true;
+        }
         clan.addMember(player.getUniqueId(), Rank.MEMBER);
         clanManager.registerMembership(clan, player.getUniqueId());
         clanManager.save(clan);
@@ -540,6 +541,47 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         }
         inviteManager.clear(player.getUniqueId());
         msg(player, "&7You declined the clan invite.");
+        return true;
+    }
+
+    // ---------------------------------------------------------------- permission
+
+    private boolean handlePermission(CommandSender sender, String[] args) {
+        Player player = requirePlayer(sender);
+        if (player == null) return true;
+
+        Clan clan = clanManager.getClanByPlayer(player.getUniqueId());
+        if (clan == null) {
+            msg(player, "&cYou are not in a clan.");
+            return true;
+        }
+        if (clan.getRank(player.getUniqueId()) != Rank.LEADER) {
+            msg(player, "&cOnly the clan leader can manage permissions.");
+            return true;
+        }
+        if (args.length < 3 || !args[1].equalsIgnoreCase("home")) {
+            msg(player, "&cUsage: /clan permission home <player>");
+            return true;
+        }
+        OfflinePlayer target = Bukkit.getOfflinePlayer(args[2]);
+        if (!clan.isMember(target.getUniqueId())) {
+            msg(player, "&cThat player is not in your clan.");
+            return true;
+        }
+        if (target.getUniqueId().equals(player.getUniqueId())) {
+            msg(player, "&cThe leader always has home access.");
+            return true;
+        }
+
+        boolean nowAllowed = clan.toggleHomePermission(target.getUniqueId());
+        clanManager.save(clan);
+        if (nowAllowed) {
+            msg(player, "&a" + target.getName() + " can now use /clan home.");
+            notifyIfOnline(target, "&aYou were granted access to /clan home in clan " + clan.getName() + ".");
+        } else {
+            msg(player, "&c" + target.getName() + " can no longer use /clan home.");
+            notifyIfOnline(target, "&cYour access to /clan home in clan " + clan.getName() + " was revoked.");
+        }
         return true;
     }
 
@@ -570,15 +612,17 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
 
     private void sendUsage(CommandSender sender) {
         sender.sendMessage(color("&6=== Clan Commands ==="));
-        sender.sendMessage(color("&f/clan create <name> &7- Found a clan"));
+        sender.sendMessage(color("&f/clan create <name> &7- Found a clan (max " + Clan.MAX_MEMBERS + " members)"));
         sender.sendMessage(color("&f/clan delete &7- Disband your clan"));
         sender.sendMessage(color("&f/clan bank <deposit|withdraw|balance> [amount] &7- Clan bank"));
         sender.sendMessage(color("&f/clan promote <player> &7- Promote to officer"));
         sender.sendMessage(color("&f/clan demote <player> &7- Demote to member"));
         sender.sendMessage(color("&f/clan kick <player> &7- Kick from the clan"));
-        sender.sendMessage(color("&f/clan home &7- Teleport to the clan home"));
+        sender.sendMessage(color("&f/clan home &7- Teleport to the clan home (needs access)"));
         sender.sendMessage(color("&f/clan home delete &7- Delete the clan home (leader only)"));
-        sender.sendMessage(color("&f/clan info [name] &7- Show clan info"));
+        sender.sendMessage(color("&f/clan permission home <player> &7- Grant/revoke home access (leader only)"));
+        sender.sendMessage(color("&f/clan info &7- Open your clan's member list (GUI)"));
+        sender.sendMessage(color("&f/clan info <name> &7- Show another clan's leader & member count"));
         sender.sendMessage(color("&f/clan transfer <player> &7- Transfer leadership"));
         sender.sendMessage(color("&f/clan chat &7- Toggle clan chat"));
         sender.sendMessage(color("&f/clan invite <player> &7- Invite a player"));
@@ -628,6 +672,12 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                 }
                 return result;
             }
+            if (sub.equals("permission")) {
+                if ("home".startsWith(args[1].toLowerCase())) {
+                    result.add("home");
+                }
+                return result;
+            }
             if (sub.equals("promote") || sub.equals("demote") || sub.equals("kick") || sub.equals("transfer")) {
                 if (!(sender instanceof Player player)) {
                     return result;
@@ -637,6 +687,27 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                     return result;
                 }
                 String partial = args[1].toLowerCase();
+                for (UUID member : clan.getMembers().keySet()) {
+                    OfflinePlayer p = Bukkit.getOfflinePlayer(member);
+                    String pname = p.getName();
+                    if (pname != null && pname.toLowerCase().startsWith(partial)) {
+                        result.add(pname);
+                    }
+                }
+                return result;
+            }
+        }
+        if (args.length == 3) {
+            String sub = args[0].toLowerCase();
+            if (sub.equals("permission") && args[1].equalsIgnoreCase("home")) {
+                if (!(sender instanceof Player player)) {
+                    return result;
+                }
+                Clan clan = clanManager.getClanByPlayer(player.getUniqueId());
+                if (clan == null) {
+                    return result;
+                }
+                String partial = args[2].toLowerCase();
                 for (UUID member : clan.getMembers().keySet()) {
                     OfflinePlayer p = Bukkit.getOfflinePlayer(member);
                     String pname = p.getName();

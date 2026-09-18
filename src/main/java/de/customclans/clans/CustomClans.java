@@ -31,6 +31,8 @@ public class CustomClans extends JavaPlugin {
         inviteManager = new InviteManager();
         getServer().getPluginManager().registerEvents(
                 new ClanChatListener(clanManager, clanChatManager), this);
+        getServer().getPluginManager().registerEvents(
+                new ClanGuiListener(clanManager), this);
 
         ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook, clanChatManager, inviteManager);
         getCommand("clan").setExecutor(clanCommand);

@@ -7,7 +7,9 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
@@ -86,6 +88,14 @@ public class ClanManager {
 
         clan.setBankBalance(yaml.getDouble("bank", 0.0));
 
+        for (String uuidStr : yaml.getStringList("home_permissions")) {
+            try {
+                clan.getHomeAllowed().add(UUID.fromString(uuidStr));
+            } catch (IllegalArgumentException ignored) {
+                // malformed entry, skip
+            }
+        }
+
         if (yaml.isConfigurationSection("home")) {
             String worldName = yaml.getString("home.world");
             World world = worldName != null ? Bukkit.getWorld(worldName) : null;
@@ -111,6 +121,12 @@ public class ClanManager {
         for (Map.Entry<UUID, Rank> entry : clan.getMembers().entrySet()) {
             yaml.set("members." + entry.getKey() + "", entry.getValue().name());
         }
+
+        List<String> homePermissions = new ArrayList<>();
+        for (UUID uuid : clan.getHomeAllowed()) {
+            homePermissions.add(uuid.toString());
+        }
+        yaml.set("home_permissions", homePermissions);
 
         if (clan.hasHome()) {
             Location loc = clan.getHome();
