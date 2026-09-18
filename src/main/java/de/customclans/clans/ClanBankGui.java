@@ -31,7 +31,7 @@ public final class ClanBankGui {
 
     public static Inventory build(Clan clan, EconomyHook economyHook) {
         ClanBankHolder holder = new ClanBankHolder(clan.getName());
-        Inventory inventory = Bukkit.createInventory(holder, SIZE, color("&8Clan Bank: " + clan.getName()));
+        Inventory inventory = Bukkit.createInventory(holder, SIZE, color("&8Clan Bank: " + clan.getDisplayName()));
         holder.setInventory(inventory);
 
         ItemStack filler = fillerPane();
@@ -80,6 +80,7 @@ public final class ClanBankGui {
             List<String> lore = new ArrayList<>();
             lore.add(color("&7Click, then type an amount in chat"));
             lore.add(color("&7to pay money into the clan bank."));
+            lore.add(color("&7You can use shorthand, e.g. &f100m &7= 100,000,000"));
             meta.setLore(lore);
             item.setItemMeta(meta);
         }
@@ -94,6 +95,7 @@ public final class ClanBankGui {
             List<String> lore = new ArrayList<>();
             lore.add(color("&7Click, then type an amount in chat"));
             lore.add(color("&7to take money out of the clan bank."));
+            lore.add(color("&7You can use shorthand, e.g. &f100m &7= 100,000,000"));
             lore.add(color("&7(Leader / Officer only)"));
             meta.setLore(lore);
             item.setItemMeta(meta);

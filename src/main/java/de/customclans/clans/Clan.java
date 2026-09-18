@@ -1,5 +1,6 @@
 package de.customclans.clans;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 
 import java.util.HashSet;
@@ -29,6 +30,9 @@ public class Clan {
     private long createdAt;
     /** Whether members of this clan can damage each other. Leader-only toggle. */
     private boolean pvpEnabled = false;
+    /** Optional hex gradient (e.g. "FF0000" -> "0000FF") set via /clan color change, leader only. */
+    private String colorStart;
+    private String colorEnd;
 
     public Clan(String name, UUID owner) {
         this.name = name;
@@ -145,5 +149,39 @@ public class Clan {
 
     public void setPvpEnabled(boolean pvpEnabled) {
         this.pvpEnabled = pvpEnabled;
+    }
+
+    public boolean hasCustomColor() {
+        return colorStart != null && colorEnd != null;
+    }
+
+    public String getColorStart() {
+        return colorStart;
+    }
+
+    public String getColorEnd() {
+        return colorEnd;
+    }
+
+    public void setColor(String colorStart, String colorEnd) {
+        this.colorStart = colorStart;
+        this.colorEnd = colorEnd;
+    }
+
+    public void clearColor() {
+        this.colorStart = null;
+        this.colorEnd = null;
+    }
+
+    /**
+     * The name as it should be shown to players: with the custom hex gradient applied
+     * (if the leader set one via /clan color change), otherwise the plain stored name.
+     */
+    public String getDisplayName() {
+        if (hasCustomColor()) {
+            String plain = ChatColor.stripColor(name);
+            return GradientUtil.apply(plain, colorStart, colorEnd);
+        }
+        return name;
     }
 }

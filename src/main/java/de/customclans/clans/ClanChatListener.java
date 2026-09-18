@@ -88,13 +88,12 @@ public class ClanChatListener implements Listener {
             return;
         }
 
-        double amount;
-        try {
-            amount = Double.parseDouble(message.trim());
-        } catch (NumberFormatException e) {
-            player.sendMessage(color("&cInvalid amount. Bank action cancelled."));
+        Double parsed = AmountParser.parse(message);
+        if (parsed == null) {
+            player.sendMessage(color("&cInvalid amount. Use a number or shorthand like 100m. Bank action cancelled."));
             return;
         }
+        double amount = parsed;
         if (amount <= 0) {
             player.sendMessage(color("&cThe amount must be greater than 0."));
             return;

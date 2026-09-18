@@ -27,10 +27,10 @@ import java.util.List;
 public final class ClanMainGui {
 
     public static final int SIZE = 54;
-    public static final int CLOCK_SLOT = 14;
-    public static final int MEMBERS_SLOT = 21;
-    public static final int BANK_SLOT = 25;
-    public static final int PVP_SLOT = 32;
+    public static final int CLOCK_SLOT = 13;
+    public static final int MEMBERS_SLOT = 20;
+    public static final int BANK_SLOT = 24;
+    public static final int PVP_SLOT = 31;
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm");
 
@@ -39,7 +39,7 @@ public final class ClanMainGui {
 
     public static Inventory build(Clan clan, EconomyHook economyHook) {
         ClanMainHolder holder = new ClanMainHolder(clan.getName());
-        Inventory inventory = Bukkit.createInventory(holder, SIZE, color("&8Clan: " + clan.getName()));
+        Inventory inventory = Bukkit.createInventory(holder, SIZE, color("&8Clan: " + clan.getDisplayName()));
         holder.setInventory(inventory);
 
         ItemStack filler = fillerPane();

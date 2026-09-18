@@ -10,7 +10,7 @@ description: Standalone clan plugin with bank, home and roles.
 commands:
   clan:
     description: Main clan command
-    usage: /clan <create|delete|bank|promote|demote|kick|home|info|transfer|chat|invite|permission|leave>
+    usage: /clan <create|delete|bank|promote|demote|kick|home|info|transfer|chat|invite|permission|leave|color>
   setclanhome:
     description: Sets the clan home at your current position (one home per clan)
     usage: /setclanhome

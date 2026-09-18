@@ -15,10 +15,19 @@ public class ClanInfoHolder implements InventoryHolder {
     private final String clanName;
     private final Map<Integer, UUID> slotMembers;
     private Inventory inventory;
+    private int backSlot = -1;
 
     public ClanInfoHolder(String clanName, Map<Integer, UUID> slotMembers) {
         this.clanName = clanName;
         this.slotMembers = slotMembers;
+    }
+
+    public void setBackSlot(int backSlot) {
+        this.backSlot = backSlot;
+    }
+
+    public int getBackSlot() {
+        return backSlot;
     }
 
     @Override

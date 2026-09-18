@@ -6,6 +6,7 @@ import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
@@ -25,14 +26,19 @@ public final class ClanInfoGui {
     private ClanInfoGui() {
     }
 
+    /** Extra fully-empty rows added below the last member, so the menu doesn't feel cramped. */
+    private static final int EXTRA_EMPTY_ROWS = 2;
+    private static final int MAX_ROWS = 6;
+
     public static Inventory build(Clan clan) {
-        int rows = Math.max(1, (int) Math.ceil(clan.getMembers().size() / 9.0));
+        int neededRows = Math.max(1, (int) Math.ceil(clan.getMembers().size() / 9.0));
+        int rows = Math.min(MAX_ROWS, neededRows + EXTRA_EMPTY_ROWS);
         int size = rows * 9;
 
         Map<Integer, UUID> slotMembers = new HashMap<>();
         ClanInfoHolder holder = new ClanInfoHolder(clan.getName(), slotMembers);
         Inventory inventory = Bukkit.createInventory(holder, size,
-                color("&8Clan: " + clan.getName() + " &7(" + clan.getMembers().size() + "/" + Clan.MAX_MEMBERS + ")"));
+                color("&8Clan: " + clan.getDisplayName() + " &7(" + clan.getMembers().size() + "/" + Clan.MAX_MEMBERS + ")"));
         holder.setInventory(inventory);
 
         List<Map.Entry<UUID, Rank>> sortedMembers = new ArrayList<>(clan.getMembers().entrySet());
@@ -78,6 +84,17 @@ public final class ClanInfoGui {
             slotMembers.put(slot, memberId);
             slot++;
         }
+
+        int backSlot = size - 1;
+        holder.setBackSlot(backSlot);
+        ItemStack back = new ItemStack(Material.ARROW);
+        ItemMeta backMeta = back.getItemMeta();
+        if (backMeta != null) {
+            backMeta.setDisplayName(color("&cBack"));
+            backMeta.setLore(List.of(color("&7Return to the clan menu")));
+            back.setItemMeta(backMeta);
+        }
+        inventory.setItem(backSlot, back);
 
         return inventory;
     }

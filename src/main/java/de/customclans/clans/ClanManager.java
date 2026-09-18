@@ -102,6 +102,11 @@ public class ClanManager {
         if (createdAt > 0L) {
             clan.setCreatedAt(createdAt);
         }
+        String colorStart = yaml.getString("color_start");
+        String colorEnd = yaml.getString("color_end");
+        if (colorStart != null && colorEnd != null) {
+            clan.setColor(colorStart, colorEnd);
+        }
 
         for (String uuidStr : yaml.getStringList("home_permissions")) {
             try {
@@ -134,6 +139,10 @@ public class ClanManager {
         yaml.set("bank", clan.getBankBalance());
         yaml.set("pvp", clan.isPvpEnabled());
         yaml.set("created_at", clan.getCreatedAt());
+        if (clan.hasCustomColor()) {
+            yaml.set("color_start", clan.getColorStart());
+            yaml.set("color_end", clan.getColorEnd());
+        }
 
         for (Map.Entry<UUID, Rank> entry : clan.getMembers().entrySet()) {
             yaml.set("members." + entry.getKey() + "", entry.getValue().name());

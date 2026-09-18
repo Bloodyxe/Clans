@@ -54,10 +54,10 @@ public class CustomClansExpansion extends PlaceholderExpansion {
         }
 
         if (params.equalsIgnoreCase("clan")) {
-            return color(clan.getName());
+            return clan.getDisplayName();
         }
         if (params.equalsIgnoreCase("tag")) {
-            return color(" [" + clan.getName() + "]");
+            return " [" + clan.getDisplayName() + color("&r") + "]";
         }
         return null;
     }

@@ -22,7 +22,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     private final InviteManager inviteManager;
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite", "permission", "leave"
+            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite", "permission", "leave", "color"
     );
 
     public ClanCommand(CustomClans plugin, ClanManager clanManager, EconomyHook economyHook,
@@ -69,6 +69,8 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                 return handlePermission(sender, args);
             case "leave":
                 return handleLeave(sender);
+            case "color":
+                return handleColor(sender, args);
             default:
                 sendUsage(sender);
                 return true;
@@ -123,11 +125,11 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             clanManager.unregisterMembership(member);
             Player online = Bukkit.getPlayer(member);
             if (online != null) {
-                msg(online, "&cYour clan &f" + clan.getName() + " &chas been disbanded.");
+                msg(online, "&cYour clan &f" + clan.getDisplayName() + " &chas been disbanded.");
             }
         }
         clanManager.delete(clan);
-        msg(player, "&aClan &f" + clan.getName() + " &ahas been disbanded.");
+        msg(player, "&aClan &f" + clan.getDisplayName() + " &ahas been disbanded.");
         return true;
     }
 
@@ -158,16 +160,15 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 3) {
-            msg(player, "&cUsage: /clan bank " + action + " <amount>");
+            msg(player, "&cUsage: /clan bank " + action + " <amount> &7(shorthand like 100m works too)");
             return true;
         }
-        double amount;
-        try {
-            amount = Double.parseDouble(args[2]);
-        } catch (NumberFormatException e) {
-            msg(player, "&cInvalid amount.");
+        Double parsedAmount = AmountParser.parse(args[2]);
+        if (parsedAmount == null) {
+            msg(player, "&cInvalid amount. You can also use shorthand like 100m (=100,000,000).");
             return true;
         }
+        double amount = parsedAmount;
         if (amount <= 0) {
             msg(player, "&cThe amount must be greater than 0.");
             return true;
@@ -373,7 +374,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             OfflinePlayer owner = Bukkit.getOfflinePlayer(clan.getOwner());
-            sender.sendMessage(color("&6=== Clan: " + clan.getName() + " ==="));
+            sender.sendMessage(color("&6=== Clan: ") + clan.getDisplayName() + color(" &6==="));
             sender.sendMessage(color("&7Leader: &f" + owner.getName()));
             sender.sendMessage(color("&7Members: &f" + clan.getMembers().size() + "/" + Clan.MAX_MEMBERS));
             return true;
@@ -410,7 +411,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         clan.removeMember(player.getUniqueId());
         clanManager.unregisterMembership(player.getUniqueId());
         clanManager.save(clan);
-        msg(player, "&7You left clan " + clan.getName() + ".");
+        msg(player, "&7You left clan " + clan.getDisplayName() + ".");
         for (UUID memberId : clan.getMembers().keySet()) {
             Player online = Bukkit.getPlayer(memberId);
             if (online != null) {
@@ -453,7 +454,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         clan.setOwner(target.getUniqueId());
         clanManager.save(clan);
         msg(player, "&aYou transferred clan leadership to " + target.getName() + ".");
-        notifyIfOnline(target, "&aYou are now the leader of clan " + clan.getName() + "!");
+        notifyIfOnline(target, "&aYou are now the leader of clan " + clan.getDisplayName() + "!");
         return true;
     }
 
@@ -527,7 +528,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
 
         inviteManager.invite(target.getUniqueId(), clan.getName());
         msg(player, "&aInvite sent to " + target.getName() + ".");
-        msg(target, "&a" + player.getName() + " invited you to join clan " + clan.getName() + "!");
+        msg(target, "&a" + player.getName() + " invited you to join clan " + clan.getDisplayName() + "!");
         msg(target, "&7Use &f/clan invite accept &7or &f/clan invite decline&7.");
         return true;
     }
@@ -555,7 +556,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         clan.addMember(player.getUniqueId(), Rank.MEMBER);
         clanManager.registerMembership(clan, player.getUniqueId());
         clanManager.save(clan);
-        msg(player, "&aYou joined clan " + clan.getName() + "!");
+        msg(player, "&aYou joined clan " + clan.getDisplayName() + "!");
         for (UUID memberId : clan.getMembers().keySet()) {
             if (memberId.equals(player.getUniqueId())) continue;
             Player online = Bukkit.getPlayer(memberId);
@@ -617,6 +618,43 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    // ---------------------------------------------------------------- color
+
+    private boolean handleColor(CommandSender sender, String[] args) {
+        Player player = requirePlayer(sender);
+        if (player == null) return true;
+
+        Clan clan = clanManager.getClanByPlayer(player.getUniqueId());
+        if (clan == null) {
+            msg(player, "&cYou are not in a clan.");
+            return true;
+        }
+        if (clan.getRank(player.getUniqueId()) != Rank.LEADER) {
+            msg(player, "&cOnly the clan leader can change the clan color.");
+            return true;
+        }
+        if (args.length < 2 || !args[1].equalsIgnoreCase("change")) {
+            msg(player, "&cUsage: /clan color change <hex1> <hex2>");
+            msg(player, "&7Example: /clan color change #FF0000 #0000FF");
+            return true;
+        }
+        if (args.length < 4) {
+            msg(player, "&cUsage: /clan color change <hex1> <hex2>");
+            msg(player, "&7Example: /clan color change #FF0000 #0000FF");
+            return true;
+        }
+        String hex1 = args[2];
+        String hex2 = args[3];
+        if (!GradientUtil.isValidHex(hex1) || !GradientUtil.isValidHex(hex2)) {
+            msg(player, "&cInvalid hex code. Use a format like #FF0000.");
+            return true;
+        }
+        clan.setColor(hex1, hex2);
+        clanManager.save(clan);
+        player.sendMessage(color("&aClan color updated: ") + clan.getDisplayName());
+        return true;
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private Player requirePlayer(CommandSender sender) {
@@ -660,6 +698,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(color("&f/clan invite <player> &7- Invite a player"));
         sender.sendMessage(color("&f/clan invite accept|decline &7- Respond to an invite"));
         sender.sendMessage(color("&f/clan leave &7- Leave your clan (not for the leader)"));
+        sender.sendMessage(color("&f/clan color change <hex1> <hex2> &7- Set a color gradient (leader only)"));
         sender.sendMessage(color("&f/setclanhome &7- Set the clan home at your position"));
     }
 
@@ -708,6 +747,12 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
             if (sub.equals("permission")) {
                 if ("home".startsWith(args[1].toLowerCase())) {
                     result.add("home");
+                }
+                return result;
+            }
+            if (sub.equals("color")) {
+                if ("change".startsWith(args[1].toLowerCase())) {
+                    result.add("change");
                 }
                 return result;
             }

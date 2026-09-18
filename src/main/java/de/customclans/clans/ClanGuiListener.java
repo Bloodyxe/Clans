@@ -99,15 +99,23 @@ public class ClanGuiListener implements Listener {
         if (slot < 0 || slot >= event.getInventory().getSize()) {
             return;
         }
-        UUID targetId = clanHolder.getMemberAt(slot);
-        if (targetId == null) {
-            return;
-        }
 
         Clan clan = clanManager.getClanByName(clanHolder.getClanName());
         if (clan == null) {
             return;
         }
+
+        if (slot == clanHolder.getBackSlot()) {
+            viewer.closeInventory();
+            viewer.openInventory(ClanMainGui.build(clan, economyHook));
+            return;
+        }
+
+        UUID targetId = clanHolder.getMemberAt(slot);
+        if (targetId == null) {
+            return;
+        }
+
         Clan viewerClan = clanManager.getClanByPlayer(viewer.getUniqueId());
         if (viewerClan == null || !viewerClan.getName().equalsIgnoreCase(clan.getName())) {
             return;
