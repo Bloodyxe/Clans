@@ -31,6 +31,10 @@ public class SetClanHomeCommand implements CommandExecutor {
             msg(player, "&cNur Anführer und Offiziere dürfen das Clan-Home setzen.");
             return true;
         }
+        if (args.length > 0) {
+            msg(player, "&cBenannte Homes sind deaktiviert - jeder Clan hat nur ein Home. Nutze /setclanhome ohne Namen.");
+            return true;
+        }
 
         clan.setHome(player.getLocation());
         clanManager.save(clan);
