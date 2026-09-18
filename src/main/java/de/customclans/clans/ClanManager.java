@@ -52,10 +52,10 @@ public class ClanManager {
                     }
                 }
             } catch (Exception e) {
-                logger.log(Level.SEVERE, "Konnte Clan-Datei nicht laden: " + file.getName(), e);
+                logger.log(Level.SEVERE, "Could not load clan file: " + file.getName(), e);
             }
         }
-        logger.info("[CustomClans] " + clansByName.size() + " Clan(s) geladen.");
+        logger.info("[CustomClans] Loaded " + clansByName.size() + " clan(s).");
     }
 
     private Clan loadFromFile(File file) {
@@ -126,7 +126,7 @@ public class ClanManager {
         try {
             yaml.save(file);
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Konnte Clan-Datei nicht speichern: " + file.getName(), e);
+            logger.log(Level.SEVERE, "Could not save clan file: " + file.getName(), e);
         }
     }
 

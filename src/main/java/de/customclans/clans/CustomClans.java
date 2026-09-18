@@ -7,6 +7,7 @@ public class CustomClans extends JavaPlugin {
     private ClanManager clanManager;
     private EconomyHook economyHook;
     private ClanChatManager clanChatManager;
+    private InviteManager inviteManager;
 
     @Override
     public void onEnable() {
@@ -16,28 +17,29 @@ public class CustomClans extends JavaPlugin {
 
         economyHook = new EconomyHook();
         if (!economyHook.setup()) {
-            getLogger().warning("Kein Vault-Economy-Provider gefunden (z.B. EssentialsX). "
-                    + "/clan bank deposit und /clan bank withdraw funktionieren erst, sobald "
-                    + "Vault + ein Economy-Plugin installiert sind.");
+            getLogger().warning("No Vault economy provider found (e.g. EssentialsX). "
+                    + "/clan bank deposit and /clan bank withdraw will be disabled until "
+                    + "Vault and an economy plugin are installed.");
         } else {
-            getLogger().info("Vault-Economy erfolgreich verbunden.");
+            getLogger().info("Vault economy connected successfully.");
         }
 
         clanManager = new ClanManager(getDataFolder(), getLogger());
         clanManager.loadAll();
 
         clanChatManager = new ClanChatManager();
+        inviteManager = new InviteManager();
         getServer().getPluginManager().registerEvents(
                 new ClanChatListener(clanManager, clanChatManager), this);
 
-        ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook, clanChatManager);
+        ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook, clanChatManager, inviteManager);
         getCommand("clan").setExecutor(clanCommand);
         getCommand("clan").setTabCompleter(clanCommand);
 
         SetClanHomeCommand setHomeCommand = new SetClanHomeCommand(clanManager);
         getCommand("setclanhome").setExecutor(setHomeCommand);
 
-        getLogger().info("CustomClans wurde aktiviert.");
+        getLogger().info("CustomClans has been enabled.");
     }
 
     @Override
@@ -47,7 +49,7 @@ public class CustomClans extends JavaPlugin {
                 clanManager.save(clan);
             }
         }
-        getLogger().info("CustomClans wurde deaktiviert, alle Clans gespeichert.");
+        getLogger().info("CustomClans has been disabled, all clans saved.");
     }
 
     public ClanManager getClanManager() {

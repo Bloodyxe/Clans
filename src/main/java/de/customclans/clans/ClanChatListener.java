@@ -37,7 +37,7 @@ public class ClanChatListener implements Listener {
         if (clan == null) {
             // Player left/was removed from their clan while chat mode was still on.
             clanChatManager.disable(player.getUniqueId());
-            player.sendMessage(color("&cDu bist in keinem Clan mehr. Clan-Chat wurde deaktiviert."));
+            player.sendMessage(color("&cYou are no longer in a clan. Clan chat has been disabled."));
             return;
         }
 
