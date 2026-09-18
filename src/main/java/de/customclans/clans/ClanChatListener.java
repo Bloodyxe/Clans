@@ -26,13 +26,16 @@ public class ClanChatListener implements Listener {
     private final ClanChatManager clanChatManager;
     private final EconomyHook economyHook;
     private final BankActionManager bankActionManager;
+    private final ClanGlowManager glowManager;
 
     public ClanChatListener(ClanManager clanManager, ClanChatManager clanChatManager,
-                             EconomyHook economyHook, BankActionManager bankActionManager) {
+                             EconomyHook economyHook, BankActionManager bankActionManager,
+                             ClanGlowManager glowManager) {
         this.clanManager = clanManager;
         this.clanChatManager = clanChatManager;
         this.economyHook = economyHook;
         this.bankActionManager = bankActionManager;
+        this.glowManager = glowManager;
     }
 
     @EventHandler(priority = EventPriority.LOW)
@@ -128,6 +131,7 @@ public class ClanChatListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         clanChatManager.disable(event.getPlayer().getUniqueId());
         bankActionManager.clear(event.getPlayer().getUniqueId());
+        glowManager.disable(event.getPlayer().getUniqueId());
     }
 
     private String color(String message) {

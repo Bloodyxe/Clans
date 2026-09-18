@@ -20,18 +20,20 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
     private final EconomyHook economyHook;
     private final ClanChatManager clanChatManager;
     private final InviteManager inviteManager;
+    private final ClanGlowManager glowManager;
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite", "permission", "leave", "color"
+            "create", "delete", "bank", "promote", "demote", "kick", "home", "info", "transfer", "chat", "invite", "permission", "leave", "color", "glow"
     );
 
     public ClanCommand(CustomClans plugin, ClanManager clanManager, EconomyHook economyHook,
-                        ClanChatManager clanChatManager, InviteManager inviteManager) {
+                        ClanChatManager clanChatManager, InviteManager inviteManager, ClanGlowManager glowManager) {
         this.plugin = plugin;
         this.clanManager = clanManager;
         this.economyHook = economyHook;
         this.clanChatManager = clanChatManager;
         this.inviteManager = inviteManager;
+        this.glowManager = glowManager;
     }
 
     @Override
@@ -71,6 +73,8 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
                 return handleLeave(sender);
             case "color":
                 return handleColor(sender, args);
+            case "glow":
+                return handleGlow(sender);
             default:
                 sendUsage(sender);
                 return true;
@@ -655,6 +659,28 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    // ---------------------------------------------------------------- glow
+
+    private boolean handleGlow(CommandSender sender) {
+        Player player = requirePlayer(sender);
+        if (player == null) return true;
+
+        Clan clan = clanManager.getClanByPlayer(player.getUniqueId());
+        if (clan == null) {
+            msg(player, "&cYou are not in a clan.");
+            return true;
+        }
+
+        boolean nowEnabled = glowManager.toggle(player.getUniqueId());
+        if (nowEnabled) {
+            msg(player, "&a[Clan Glow] &7Enabled. Clan members within " + ClanGlowTask.RANGE + " blocks will glow for you.");
+            msg(player, "&7Use &f/clan glow &7again to turn it off.");
+        } else {
+            msg(player, "&7[Clan Glow] &cDisabled.");
+        }
+        return true;
+    }
+
     // ---------------------------------------------------------------- helpers
 
     private Player requirePlayer(CommandSender sender) {
@@ -699,6 +725,7 @@ public class ClanCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(color("&f/clan invite accept|decline &7- Respond to an invite"));
         sender.sendMessage(color("&f/clan leave &7- Leave your clan (not for the leader)"));
         sender.sendMessage(color("&f/clan color change <hex1> <hex2> &7- Set a color gradient (leader only)"));
+        sender.sendMessage(color("&f/clan glow &7- Toggle seeing clan mates glow within " + ClanGlowTask.RANGE + " blocks"));
         sender.sendMessage(color("&f/setclanhome &7- Set the clan home at your position"));
     }
 

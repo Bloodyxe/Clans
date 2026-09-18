@@ -10,6 +10,8 @@ public class CustomClans extends JavaPlugin {
     private ClanChatManager clanChatManager;
     private InviteManager inviteManager;
     private BankActionManager bankActionManager;
+    private ClanGlowManager glowManager;
+    private ClanGlowTask glowTask;
 
     @Override
     public void onEnable() {
@@ -32,15 +34,19 @@ public class CustomClans extends JavaPlugin {
         clanChatManager = new ClanChatManager();
         inviteManager = new InviteManager();
         bankActionManager = new BankActionManager();
+        glowManager = new ClanGlowManager();
 
         getServer().getPluginManager().registerEvents(
-                new ClanChatListener(clanManager, clanChatManager, economyHook, bankActionManager), this);
+                new ClanChatListener(clanManager, clanChatManager, economyHook, bankActionManager, glowManager), this);
         getServer().getPluginManager().registerEvents(
                 new ClanGuiListener(clanManager, economyHook, bankActionManager), this);
         getServer().getPluginManager().registerEvents(
                 new ClanPvpListener(clanManager), this);
 
-        ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook, clanChatManager, inviteManager);
+        glowTask = new ClanGlowTask(clanManager, glowManager);
+        glowTask.runTaskTimer(this, 20L, 20L);
+
+        ClanCommand clanCommand = new ClanCommand(this, clanManager, economyHook, clanChatManager, inviteManager, glowManager);
         getCommand("clan").setExecutor(clanCommand);
         getCommand("clan").setTabCompleter(clanCommand);
 
@@ -60,6 +66,10 @@ public class CustomClans extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (glowTask != null) {
+            glowTask.resetAll();
+            glowTask.cancel();
+        }
         if (clanManager != null) {
             for (Clan clan : clanManager.getAllClans().values()) {
                 clanManager.save(clan);
